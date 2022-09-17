@@ -28,6 +28,7 @@ def get_peaks(xs):
   #  plt.plot(df.index, df['data'])
   #  plt.show()
     return peaks
+    print(peaks)
 
 
 def extract_data(path):
@@ -125,10 +126,10 @@ def run(path, plot, store, joined):
         plot_data(flat_lists[0], time, path, flat_lists[-1])
     elif plot and joined=="average":
         mid= int( 0.5 * len(flat_lists))
-       # plot_data(flat_lists[mid], time ,path)
-        maxpeak = get_peaks(average)
-        print(maxpeaks)
-        plot_data(average, time ,path)
+        plot_data(flat_lists[mid], time ,path)
+       # maxpeak = get_peaks(average)
+       # print(maxpeaks)
+       # plot_data(average, time ,path)
         plt.scatter(total_time, df['max'], c='r')
         plt.plot(total_time, df['data'])
         plt.show()
