@@ -11,7 +11,9 @@ from matplotlib import pyplot as plt
 from igor.binarywave import load as loadibw
 from scipy.signal import argrelextrema
 
-def get_peaks(xs):
+DT = 5*10 ** -5
+
+def get_peaks(xs, total_time):
     df = pd.DataFrame(xs, columns=['data'])
     n = int(len(xs) / 25)
     df['max'] = df.iloc[argrelextrema(df.data.values, np.greater_equal,
@@ -20,13 +22,13 @@ def get_peaks(xs):
     average = sum(xs)/len(xs)
     for i in range(len(df['max'])):
         if not math.isnan(df['max'][i]) and df['max'][i] > average:
-           peaks.append([i, df['max'][i]]) 
+           peaks.append([i, i*DT, df['max'][i]]) 
         else:
            df['max'][i] = math.nan
- #   print(f"num peaks: {len(peaks)}")
-  #  plt.scatter(df.index, df['max'], c='r')
-  #  plt.plot(df.index, df['data'])
-  #  plt.show()
+    print(f"num peaks: {len(peaks)}")
+    plt.scatter(df.index, df['max'], c='r')
+    plt.plot(df.index, df['data'])
+    plt.show()
     return peaks
     print(peaks)
 
@@ -87,10 +89,9 @@ def run(path, plot, store, joined):
     
     stacks = len(values[0])
     datapoints = len(values)
-    DT = 5*10 ** -5
 
-    seconds = datapoints * DT
-    time = seconds / 60
+    time = datapoints * DT
+    #time = seconds / 60  #convert to minutes
     #time = seconds/ 20
 
     print(f"Number of stacks: {stacks} \nDatapoints per stack: {datapoints}")
@@ -100,14 +101,12 @@ def run(path, plot, store, joined):
         for i in range(stacks):
             flat_lists[i].append(l[i])
     joined_lists = [] 
-    total_time=0
     listsofaverage = []
     for i in range(len(flat_lists)):
         joined_lists += flat_lists[i]
-        total_time += time
         listsofaverage.append(sum(flat_lists[i])/len(flat_lists[i]))
 
-    print ("Recording time :", total_time)
+    print ("Recording time :", time)
     np_flat_lists = np.array(flat_lists)
     for i in range(len(np_flat_lists)):
          np_flat_lists[i] = np.array(np_flat_lists[i])
@@ -121,17 +120,17 @@ def run(path, plot, store, joined):
     if plot and joined=="stacked":    
         plot_data(values, time, path)
     elif plot and joined=="in_a_row":
-        plot_data(joined_lists, total_time, path)
+        plot_data(joined_lists, time, path)
     elif plot and joined=="first_last":
         plot_data(flat_lists[0], time, path, flat_lists[-1])
     elif plot and joined=="average":
         mid= int( 0.5 * len(flat_lists))
         plot_data(flat_lists[mid], time ,path)
-       # maxpeak = get_peaks(average)
-       # print(maxpeaks)
+        maxpeak = get_peaks(flat_lists[mid], time)
+        print(maxpeak)
        # plot_data(average, time ,path)
-        plt.scatter(total_time, df['max'], c='r')
-        plt.plot(total_time, df['data'])
+       # plot_data(maxpeak, time, c='r')
+       # plt.plot(total_time, df['data'])
         plt.show()
 
        # plot_data(listsofaverage, time, path)
