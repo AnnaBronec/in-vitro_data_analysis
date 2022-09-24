@@ -18,11 +18,16 @@ def print_peaks(peaks):
         if not math.isnan(peaks[i]):
             print(f"index: {i}, time: {i*DT}, value: {peaks[i]}") 
 
-def get_peaks(xs, total_time):
+# change epsilon to determmin number of peaks (for large data use ~25, for small use 1)
+def get_peaks_in_range(xs, epsilon=25):
+    # Create data-frame with given values
     df = pd.DataFrame(xs, columns=['data'])
-    n = int(len(xs) / 25)
+    # calculate number of data-points to evaluate
+    n = int(len(xs) / epsilon)
+    # get peaks
     df['max'] = df.iloc[argrelextrema(df.data.values, np.greater_equal,
                         order=n)[0]]['data']
+    # Convert to list of peaks and ignore values below average
     peaks = []
     average = sum(xs)/len(xs)
     for i in range(len(df['max'])):
@@ -30,10 +35,29 @@ def get_peaks(xs, total_time):
            peaks.append(df['max'][i]) 
         else:
            peaks.append(math.nan)
-    print(f"df.index: {df.index}, type: {type(df.index)}")
-    #plt.scatter(df.index, peaks, c='r')
-    #plt.plot(df.index, df['data'])
-    #plt.show()
+    return peaks
+
+def get_peaks(xs, start, step, interval, num_intervals):
+    print(f"get_peaks: {len(xs)}, {start}, {step}, {interval}")
+    # convert seconds to index
+    start = int(start*len(xs)/2)
+    step = int(step*len(xs)/2)
+    interval = int(interval*len(xs)/2)
+    print(f"get_peaks: {start}, {step}, {interval}")
+    # fill values up to first data-point with nans
+    peaks = [math.nan for _ in range(start-(step-interval))]
+    counter = 0
+    for i in range(start, len(xs), step):
+        # fill with nans
+        peaks = peaks + [math.nan for _ in range(len(peaks), i)]
+        # make sure bounds are not exceeded, then get peeks
+        if len(xs) > i+interval:
+            peaks = peaks + get_peaks_in_range(xs[i:(i+interval)], 1)
+        # stop after first 'num_intervals' datapoints
+        counter += 1
+        if counter == num_intervals:
+            break
+    peaks = peaks + [math.nan for _ in range(len(peaks), len(xs))]
     return peaks
 
 def extract_data(path):
@@ -55,12 +79,14 @@ def store_data(path, data, values):
         json.dump(values, writer, indent=4)
 
 def plot_data(values, total_time, path, peaks=None, list2=None):  
-    listxachs=np.linspace(0, total_time, len(values))
-    print(f"listxachs: {listxachs}, type: {type(listxachs)}")
+    listxachs=np.linspace(0, total_time, len(values)) 
     # Plot peaks, if set
     if peaks is not None:
         plt.scatter(listxachs, peaks, c='b')
     plt.plot(listxachs, values, linewidth=0.3, color="red")
+    # Highlights a certain area in plot
+    for i in range(200, 220):
+        plt.axvspan(i/1000, (i+1)/1000, facecolor="b", alpha=0.5)
     # Plot second list if set
     if list2 is not None:
         plt.plot(listxachs, list2, linewidth=0.3, color="red", label="last")
@@ -79,8 +105,6 @@ def plot_data(values, total_time, path, peaks=None, list2=None):
     path = path.replace('ibw','svg')
     path = path.replace('input','output')  # input, ouput = foldernames
     plt.savefig(f'{path}',format='svg')    # only if you want to safe it
-    # plt.savefig(f'{path}.eps', format='eps')
-    # plt.savefig(f'{path}.svg', format='svg')
     plt.show()
 
 
@@ -93,21 +117,21 @@ def run(path, plot, store, joined):
     # Extract complete data and values 
     data, values = extract_data(path)
 
+    # Print type of data to plot (stacked, in_a_row, first_last, average)
     print("joined: ", joined)
     
+    # Get number of stacks, datapoints per stack and time
     stacks = len(values[0])
     datapoints = len(values)
-
     time = datapoints * DT
-    #time = seconds / 60  #convert to minutes
-    #time = seconds/ 20
-
     print(f"Number of stacks: {stacks} \nDatapoints per stack: {datapoints}")
 
+    # Convert rows to columns 
     flat_lists = [ list() for x in range(stacks)]
     for l in values:
         for i in range(stacks):
             flat_lists[i].append(l[i])
+    # Create joined lists (all stacks in a row: stack-1..n), and average stack
     joined_lists = [] 
     listsofaverage = []
     for i in range(len(flat_lists)):
@@ -120,24 +144,29 @@ def run(path, plot, store, joined):
          np_flat_lists[i] = np.array(np_flat_lists[i])
     averages = np.mean(np_flat_lists, axis=0)
 
-
     # Store data:
     if store:
         store_data(path, data, values)
     # Plot data: 
+    # TODO: what is plotted here?
     if plot and joined=="stacked":    
         plot_data(values, time, path)
+    # Print all stacks in a row (stack-1, stack-2, ..., stack-n)
     elif plot and joined=="in_a_row":
         plot_data(joined_lists, time, path)
+    # Plot first and last stack
     elif plot and joined=="first_last":
         plot_data(flat_lists[0], time, path, list2=flat_lists[-1])
+    # Plot average, also mark and print peaks
     elif plot and joined=="average":
         mid = int( 0.5 * len(flat_lists))
-        maxpeaks = get_peaks(flat_lists[mid], time)
-        # plot_data(flat_lists[mid], time, path)
+        # Get monosynaptic input from 200ms, every 100ms, 20ms interval (first 10 peaks)
+        maxpeaks = get_peaks(flat_lists[mid], 0.2, 0.1, 0.02, num_intervals=10)
+        # Alternative method to get dysynaptic input (using all data-points):
+        # maxpeaks = get_peaks_in_range(flat_lists[mid])
         print_peaks(maxpeaks)
+        # Finally: plot data
         plot_data(flat_lists[mid], time, path, peaks=maxpeaks)
-       # plot_data(listsofaverage, time, path)
         
 if __name__ == '__main__': 
     run()
