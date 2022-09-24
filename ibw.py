@@ -13,6 +13,11 @@ from scipy.signal import argrelextrema
 
 DT = 5*10 ** -5
 
+def print_peaks(peaks):
+    for i in range(len(peaks)):
+        if not math.isnan(peaks[i]):
+            print(f"index: {i}, time: {i*DT}, value: {peaks[i]}") 
+
 def get_peaks(xs, total_time):
     df = pd.DataFrame(xs, columns=['data'])
     n = int(len(xs) / 25)
@@ -21,17 +26,15 @@ def get_peaks(xs, total_time):
     peaks = []
     average = sum(xs)/len(xs)
     for i in range(len(df['max'])):
-        if not math.isnan(df['max'][i]) and df['max'][i] > average:
-           peaks.append([i, i*DT, df['max'][i]]) 
+        if df['max'][i] > average:
+           peaks.append(df['max'][i]) 
         else:
-           df['max'][i] = math.nan
-    print(f"num peaks: {len(peaks)}")
-    plt.scatter(df.index, df['max'], c='r')
-    plt.plot(df.index, df['data'])
-    plt.show()
+           peaks.append(math.nan)
+    print(f"df.index: {df.index}, type: {type(df.index)}")
+    #plt.scatter(df.index, peaks, c='r')
+    #plt.plot(df.index, df['data'])
+    #plt.show()
     return peaks
-    print(peaks)
-
 
 def extract_data(path):
     data = loadibw(path)
@@ -51,9 +54,14 @@ def store_data(path, data, values):
     with open(f'{path}.json', 'w') as writer:
         json.dump(values, writer, indent=4)
 
-def plot_data(values, total_time, path, list2=None):  
+def plot_data(values, total_time, path, peaks=None, list2=None):  
     listxachs=np.linspace(0, total_time, len(values))
+    print(f"listxachs: {listxachs}, type: {type(listxachs)}")
+    # Plot peaks, if set
+    if peaks is not None:
+        plt.scatter(listxachs, peaks, c='b')
     plt.plot(listxachs, values, linewidth=0.3, color="red")
+    # Plot second list if set
     if list2 is not None:
         plt.plot(listxachs, list2, linewidth=0.3, color="red", label="last")
     plt.xlabel("Time [minutes]",
@@ -69,10 +77,10 @@ def plot_data(values, total_time, path, list2=None):
             size = 10,
             labelpad = 5)
     path = path.replace('ibw','svg')
-    path = path.replace('input','output')  #input, ouput = foldernames
-    plt.savefig(f'{path}',format='svg')                 #only if you want to safe it
-  #  plt.savefig(f'{path}.eps', format='eps')
-   # plt.savefig(f'{path}.svg', format='svg')
+    path = path.replace('input','output')  # input, ouput = foldernames
+    plt.savefig(f'{path}',format='svg')    # only if you want to safe it
+    # plt.savefig(f'{path}.eps', format='eps')
+    # plt.savefig(f'{path}.svg', format='svg')
     plt.show()
 
 
@@ -122,17 +130,13 @@ def run(path, plot, store, joined):
     elif plot and joined=="in_a_row":
         plot_data(joined_lists, time, path)
     elif plot and joined=="first_last":
-        plot_data(flat_lists[0], time, path, flat_lists[-1])
+        plot_data(flat_lists[0], time, path, list2=flat_lists[-1])
     elif plot and joined=="average":
-        mid= int( 0.5 * len(flat_lists))
-        plot_data(flat_lists[mid], time ,path)
-        maxpeak = get_peaks(flat_lists[mid], time)
-        print(maxpeak)
-       # plot_data(average, time ,path)
-       # plot_data(maxpeak, time, c='r')
-       # plt.plot(total_time, df['data'])
-        plt.show()
-
+        mid = int( 0.5 * len(flat_lists))
+        maxpeaks = get_peaks(flat_lists[mid], time)
+        # plot_data(flat_lists[mid], time, path)
+        print_peaks(maxpeaks)
+        plot_data(flat_lists[mid], time, path, peaks=maxpeaks)
        # plot_data(listsofaverage, time, path)
         
 if __name__ == '__main__': 
