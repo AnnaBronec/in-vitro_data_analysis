@@ -13,37 +13,56 @@ from scipy.signal import argrelextrema
 
 DT = 5*10 ** -5
 
-def print_peaks(peaks):
-    for i in range(len(peaks)):
-        if not math.isnan(peaks[i]):
-            print(f"index: {i}, time: {i*DT}, value: {peaks[i]}") 
+def get_only_peaks(peaks):
+    """ 
+    Removes all NaN values from peaks and peaks which are too close.
+    """
+    reduced_peaks = []
+    for i, peak in enumerate(peaks):
+        # Add to reduced peaks, if not nan or index of last value is <100 smaller than current.
+        if not math.isnan(peak) and (len(reduced_peaks) == 0 or i-reduced_peaks[-1][0] > 100):
+            reduced_peaks.append([i, i*DT, peak])
+    return reduced_peaks
+
+def peaks_to_dataframe(max_peaks, min_peaks):
+    rows = []
+    # Create rows
+    for i in range(len(max_peaks)):
+        row = []
+        row += min_peaks[i] if i < len(min_peaks) else [math.nan, math.nan, math.nan]
+        row += max_peaks[i] if i < len(max_peaks) else [math.nan, math.nan, math.nan]
+        if i < len(min_peaks) and i < len(max_peaks): 
+            row.append(max_peaks[i][2]-min_peaks[i][2])
+        else: 
+            row.append(math.nan)
+        rows.append(row)
+    df = pd.DataFrame(np.array(rows), columns=["index", "time", "min", "index", "time", "max", "amp"])
+    return df
 
 # change epsilon to determmin number of peaks (for large data use ~25, for small use 1)
-def get_peaks_in_range(xs, epsilon=25):
+def get_peaks_in_range(xs, comp, epsilon=25):
     # Create data-frame with given values
     df = pd.DataFrame(xs, columns=['data'])
     # calculate number of data-points to evaluate
     n = int(len(xs) / epsilon)
     # get peaks
-    df['max'] = df.iloc[argrelextrema(df.data.values, np.greater_equal,
+    df['peaks'] = df.iloc[argrelextrema(df.data.values, comp,
                         order=n)[0]]['data']
     # Convert to list of peaks and ignore values below average
     peaks = []
     average = sum(xs)/len(xs)
-    for i in range(len(df['max'])):
-        if df['max'][i] > average:
-           peaks.append(df['max'][i]) 
+    for i in range(len(df['peaks'])):
+        if comp(df['peaks'][i], average):
+           peaks.append(df['peaks'][i]) 
         else:
            peaks.append(math.nan)
     return peaks
 
-def get_peaks(xs, start, step, interval, num_intervals):
-    print(f"get_peaks: {len(xs)}, {start}, {step}, {interval}")
+def get_peaks(xs, start, step, interval, num_intervals, comp):
     # convert seconds to index
     start = int(start*len(xs)/2)
     step = int(step*len(xs)/2)
     interval = int(interval*len(xs)/2)
-    print(f"get_peaks: {start}, {step}, {interval}")
     # fill values up to first data-point with nans
     peaks = [math.nan for _ in range(start-(step-interval))]
     counter = 0
@@ -52,12 +71,13 @@ def get_peaks(xs, start, step, interval, num_intervals):
         peaks = peaks + [math.nan for _ in range(len(peaks), i)]
         # make sure bounds are not exceeded, then get peeks
         if len(xs) > i+interval:
-            peaks = peaks + get_peaks_in_range(xs[i:(i+interval)], 1)
+            peaks = peaks + get_peaks_in_range(xs[i:(i+interval)], comp, 1)
         # stop after first 'num_intervals' datapoints
         counter += 1
         if counter == num_intervals:
             break
     peaks = peaks + [math.nan for _ in range(len(peaks), len(xs))]
+    print(f"get_peaks with: {start}, {step}, {interval}, found {len(get_only_peaks(peaks))} peaks.")
     return peaks
 
 def extract_data(path):
@@ -78,15 +98,14 @@ def store_data(path, data, values):
     with open(f'{path}.json', 'w') as writer:
         json.dump(values, writer, indent=4)
 
-def plot_data(values, total_time, path, peaks=None, list2=None):  
+def plot_data(values, total_time, path, min_peaks=None, max_peaks=None, df=None, list2=None):  
     listxachs=np.linspace(0, total_time, len(values)) 
     # Plot peaks, if set
-    if peaks is not None:
-        plt.scatter(listxachs, peaks, c='b')
+    if min_peaks is not None:
+        plt.scatter(listxachs, min_peaks, c='b')
+    if max_peaks is not None:
+        plt.scatter(listxachs, max_peaks, c='b')
     plt.plot(listxachs, values, linewidth=0.3, color="red")
-    # Highlights a certain area in plot
-    for i in range(200, 220):
-        plt.axvspan(i/1000, (i+1)/1000, facecolor="b", alpha=0.5)
     # Plot second list if set
     if list2 is not None:
         plt.plot(listxachs, list2, linewidth=0.3, color="red", label="last")
@@ -102,9 +121,17 @@ def plot_data(values, total_time, path, peaks=None, list2=None):
             weight = 'normal',
             size = 10,
             labelpad = 5)
-    path = path.replace('ibw','svg')
+
+      
+    # Store figure
     path = path.replace('input','output')  # input, ouput = foldernames
+    path = path.replace('ibw','svg')
     plt.savefig(f'{path}',format='svg')    # only if you want to safe it
+    # Store df (peaks)
+    if df is not None:
+        path = path.replace('svg','csv')
+        df.to_csv(path)
+    # Show plot
     plt.show()
 
 
@@ -161,12 +188,14 @@ def run(path, plot, store, joined):
     elif plot and joined=="average":
         mid = int( 0.5 * len(flat_lists))
         # Get monosynaptic input from 200ms, every 100ms, 20ms interval (first 10 peaks)
-        maxpeaks = get_peaks(flat_lists[mid], 0.2, 0.1, 0.02, num_intervals=10)
+        maxpeaks = get_peaks(flat_lists[mid], 0.2, 0.1, 0.02, num_intervals=10, comp=np.greater_equal)
+        minpeaks = get_peaks(flat_lists[mid], 0.2, 0.1, 0.02, num_intervals=10, comp=np.less_equal)
         # Alternative method to get dysynaptic input (using all data-points):
-        # maxpeaks = get_peaks_in_range(flat_lists[mid])
-        print_peaks(maxpeaks)
+        # maxpeaks = get_peaks_in_range(flat_lists[mid], comp=np.greater_equal)
+        df = peaks_to_dataframe(get_only_peaks(maxpeaks), get_only_peaks(minpeaks))
+        print(df)
         # Finally: plot data
-        plot_data(flat_lists[mid], time, path, peaks=maxpeaks)
+        plot_data(flat_lists[mid], time, path, min_peaks=minpeaks, max_peaks=maxpeaks, df=df)
         
 if __name__ == '__main__': 
     run()
