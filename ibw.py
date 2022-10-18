@@ -24,6 +24,23 @@ def get_only_peaks(peaks):
             reduced_peaks.append([i, i*DT, peak])
     return reduced_peaks
 
+def alternate_min_max(min_peaks, max_peaks):
+    last_was_min = False
+    for i in range(len(min_peaks)):
+        if not math.isnan(min_peaks[i]):
+            if last_was_min == True:
+                min_peaks[i] = math.nan
+                print ("removed min peak")
+            last_was_min = True
+        if not math.isnan(max_peaks[i]):
+            if last_was_min == False:
+                max_peaks[i] = math.nan
+                print ("removed max peak")
+            last_was_min = False
+    return min_peaks, max_peaks
+
+
+
 def peaks_to_dataframe(max_peaks, min_peaks):
     rows = []
     # Create rows
@@ -77,7 +94,7 @@ def get_peaks(xs, start, step, interval, num_intervals, comp):
         if counter == num_intervals:
             break
     peaks = peaks + [math.nan for _ in range(len(peaks), len(xs))]
-    print(f"get_peaks with: {start}, {step}, {interval}, found {len(get_only_peaks(peaks))} peaks.")
+    print(f"get_peaks with: {start}, {step},{interval},found {len(get_only_peaks(peaks))} peaks.")
     return peaks
 
 def extract_data(path):
@@ -140,7 +157,10 @@ def plot_data(values, total_time, path, min_peaks=None, max_peaks=None, df=None,
 @click.option('--plot', default=True, help='show plot')
 @click.option('--store', default=True, help='store data: stores complete data as txt and values as json.')
 @click.option('--joined', help='join lists')
-def run(path, plot, store, joined):
+@click.option('--start', help='join lists', default=0.2)
+@click.option('--step', help='join lists', default=0.1)
+@click.option('--interval', help='join lists', default=0.02)
+def run(path, plot, store, joined, start, step, interval):
     # Extract complete data and values 
     data, values = extract_data(path)
 
@@ -188,14 +208,15 @@ def run(path, plot, store, joined):
     elif plot and joined=="average":
         mid = int( 0.5 * len(flat_lists))
         # Get monosynaptic input from 200ms, every 100ms, 20ms interval (first 10 peaks)
-        maxpeaks = get_peaks(flat_lists[mid], 0.2, 0.1, 0.02, num_intervals=10, comp=np.greater_equal)
-        minpeaks = get_peaks(flat_lists[mid], 0.2, 0.1, 0.02, num_intervals=10, comp=np.less_equal)
+        max_peaks = get_peaks(flat_lists[mid], start, step, interval, num_intervals=10, comp=np.greater_equal)
+        min_peaks = get_peaks(flat_lists[mid], start, step, interval, num_intervals=10, comp=np.less_equal)
+        min_peaks, max_peaks = alternate_min_max(min_peaks, max_peaks)
         # Alternative method to get dysynaptic input (using all data-points):
-        # maxpeaks = get_peaks_in_range(flat_lists[mid], comp=np.greater_equal)
-        df = peaks_to_dataframe(get_only_peaks(maxpeaks), get_only_peaks(minpeaks))
+        #maxpeaks = get_peaks_in_range(flat_lists[mid], comp=np.greater_equal)
+        df = peaks_to_dataframe(get_only_peaks(max_peaks), get_only_peaks(min_peaks))
         print(df)
         # Finally: plot data
-        plot_data(flat_lists[mid], time, path, min_peaks=minpeaks, max_peaks=maxpeaks, df=df)
+        plot_data(flat_lists[mid], time, path, min_peaks=min_peaks, max_peaks=max_peaks, df=df)
         
 if __name__ == '__main__': 
     run()
