@@ -10,8 +10,10 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from igor.binarywave import load as loadibw
 from scipy.signal import argrelextrema
+from scipy import integrate
 
 DT = 5*10 ** -5
+
 
 def get_only_peaks(peaks):
     """ 
@@ -30,12 +32,10 @@ def alternate_min_max(min_peaks, max_peaks):
         if not math.isnan(min_peaks[i]):
             if last_was_min == True:
                 min_peaks[i] = math.nan
-                print ("removed min peak")
             last_was_min = True
         if not math.isnan(max_peaks[i]):
             if last_was_min == False:
                 max_peaks[i] = math.nan
-                print ("removed max peak")
             last_was_min = False
     return min_peaks, max_peaks
 
@@ -198,6 +198,7 @@ def run(path, plot, store, joined, start, step, interval):
     # TODO: what is plotted here?
     if plot and joined=="stacked":    
         plot_data(values, time, path)
+        print("Integral:", (-1)*np.trapez(values))
     # Print all stacks in a row (stack-1, stack-2, ..., stack-n)
     elif plot and joined=="in_a_row":
         plot_data(joined_lists, time, path)
@@ -217,6 +218,10 @@ def run(path, plot, store, joined, start, step, interval):
         print(df)
         # Finally: plot data
         plot_data(flat_lists[mid], time, path, min_peaks=min_peaks, max_peaks=max_peaks, df=df)
+       # print(flat_lists[mid])
+        # INTEGRAL BERECHNEN!!
+        print("INTAGRAL: ", (-1)*np.trapz(flat_lists[mid]))
+        #df.groupby(df.Device).apply(lambda g: integrate.trapz(g.Current, x=g.TimeSec))
         
 if __name__ == '__main__': 
     run()
