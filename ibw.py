@@ -11,7 +11,6 @@ from matplotlib import pyplot as plt
 from igor.binarywave import load as loadibw
 from scipy.signal import argrelextrema
 from scipy import integrate
-
 DT = 5*10 ** -5
 
 
@@ -38,8 +37,6 @@ def alternate_min_max(min_peaks, max_peaks):
                 max_peaks[i] = math.nan
             last_was_min = False
     return min_peaks, max_peaks
-
-
 
 def peaks_to_dataframe(max_peaks, min_peaks):
     rows = []
@@ -207,21 +204,21 @@ def run(path, plot, store, joined, start, step, interval):
         plot_data(flat_lists[0], time, path, list2=flat_lists[-1])
     # Plot average, also mark and print peaks
     elif plot and joined=="average":
-        mid = int( 0.5 * len(flat_lists))
-        # Get monosynaptic input from 200ms, every 100ms, 20ms interval (first 10 peaks)
-        max_peaks = get_peaks(flat_lists[mid], start, step, interval, num_intervals=10, comp=np.greater_equal)
-        min_peaks = get_peaks(flat_lists[mid], start, step, interval, num_intervals=10, comp=np.less_equal)
+        # mid = int( 0.5 * len(flat_lists))
+        # avrg = flat_lists[mid]
+        avrg = [sum([x[i] for x in flat_lists])/len([x[i] for x in flat_lists]) for i in range(len(flat_lists[0]))]
+        # Get MONOSYNAPTIC INPUT from 200ms, every 100ms, 20ms interval (first 10 peaks)
+        max_peaks = get_peaks(avrg, start, step, interval, num_intervals=10, comp=np.greater_equal)
+        min_peaks = get_peaks(avrg, start, step, interval, num_intervals=10, comp=np.less_equal)
         min_peaks, max_peaks = alternate_min_max(min_peaks, max_peaks)
-        # Alternative method to get dysynaptic input (using all data-points):
+        # Alternative method to get DYSYNAPTIC INPUT (using all data-points):
         #maxpeaks = get_peaks_in_range(flat_lists[mid], comp=np.greater_equal)
         df = peaks_to_dataframe(get_only_peaks(max_peaks), get_only_peaks(min_peaks))
         print(df)
         # Finally: plot data
-        plot_data(flat_lists[mid], time, path, min_peaks=min_peaks, max_peaks=max_peaks, df=df)
-       # print(flat_lists[mid])
-        # INTEGRAL BERECHNEN!!
-        print("INTAGRAL: ", (-1)*np.trapz(flat_lists[mid]))
-        #df.groupby(df.Device).apply(lambda g: integrate.trapz(g.Current, x=g.TimeSec))
-        
+        plot_data(avrg, time, path, min_peaks=min_peaks, max_peaks=max_peaks, df=df)
+        # Substract min value from each value, to get integral from baseline only )not dow to zero).
+        min_val = min(avrg)
+        print("INTAGRAL: ", integrate.simps([x-min_val for x in avrg]))
 if __name__ == '__main__': 
     run()
