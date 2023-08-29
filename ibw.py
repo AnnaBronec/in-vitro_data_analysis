@@ -1,14 +1,13 @@
-import json
-import os
 import os.path
 import math
 import numpy as np
 import click
 import pandas as pd
+from preprocessing import extract_data, convert_rows_to_columns, join_lists
 from matplotlib import pyplot as plt
-from igor.binarywave import load as loadibw
 from scipy.signal import argrelextrema
 from scipy import integrate
+
 DT = 5*10 ** -5
 
 def get_only_peaks(peaks):
@@ -91,24 +90,6 @@ def get_peaks(xs, start, step, interval, num_intervals, comp):
     print(f"get_peaks with: {start}, {step},{interval},found {len(get_only_peaks(peaks))} peaks.")
     return peaks
 
-def extract_data(path):
-    data = loadibw(path)
-    wave = data['wave']
-    values = np.nan_to_num(wave['wData']).tolist()
-    del data['wave']['wData']
-    return (data, values)
-
-def store_data(path, data, values): 
-    path = path.replace('ibw', '')
-    path = path.replace('input', 'output')
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    lines = format(data).splitlines()            
-    with open(f'{path}.txt', 'w') as writer: 
-        writer.writelines([line + "\n" for line in lines])
-        # json.dump(data, writer, indent=4)
-    with open(f'{path}.json', 'w') as writer:
-        json.dump(values, writer, indent=4)
-
 def plot_data(values, total_time, path, min_peaks=None, max_peaks=None, df=None, list2=None):  
     listxachs=np.linspace(0, total_time, len(values)) 
     # Plot peaks, if set
@@ -149,63 +130,43 @@ def plot_data(values, total_time, path, min_peaks=None, max_peaks=None, df=None,
 @click.command()
 @click.option('--path', help='specify the path and filename: "Data/<date>/<filename>"')
 @click.option('--plot', default=True, help='show plot')
-@click.option('--store', default=True, help='store data: stores complete data as txt and values as json.')
-@click.option('--joined', help='join lists')
-@click.option('--start', help='join lists', default=0.2)
-@click.option('--step', help='join lists', default=0.1)
-@click.option('--interval', help='join lists', default=0.02)
+@click.option('--store', default=True, help='store data: stores complete data as txt and datapoints_per_stack as json.')
+@click.option('--joined', help='join lists (stacked, in_a_row, first_last, average)')
+@click.option('--start', help='start of interval peaks(ms)', default=0.2)
+@click.option('--step', help='step size recognized values', default=0.1)
+@click.option('--interval', help='jumps values defined by interval', default=0.02)
 def run(path, plot, store, joined, start, step, interval):
-    # Extract complete data and values 
-    data, values = extract_data(path)
+    # Extract complete data and datapoints_per_stack 
+    datapoints_per_stack = extract_data(path, store)
 
-    # Print type of data to plot (stacked, in_a_row, first_last, average)
-    print("joined: ", joined)
-    
     # Get number of stacks, datapoints per stack and time
-    stacks = len(values[0])
-    datapoints = len(values)
-    time = datapoints * DT
-    print(f"Number of stacks: {stacks} \nDatapoints per stack: {datapoints}")
+    num_stacks = len(datapoints_per_stack[0]) # Länge der 1. Liste (= Widerholung der Mssung)
+    num_datapoints = len(datapoints_per_stack) # Anzahl Listen
+    time = num_datapoints * DT
+    print(f"Number of stacks: {num_stacks}")
+    print(f"Datapoints per stack: {num_datapoints}") 
+    print(f"Recording time: {time}")
 
     # Convert rows to columns 
-    flat_lists = [ list() for x in range(stacks)]
-    for l in values:
-        for i in range(stacks):
-            flat_lists[i].append(l[i])
-    # Create joined lists (all stacks in a row: stack-1..n), and average stack
-    joined_lists = [] 
-    listsofaverage = []
-    for i in range(len(flat_lists)):
-        joined_lists += flat_lists[i]
-        listsofaverage.append(sum(flat_lists[i])/len(flat_lists[i]))
+    flat_lists = convert_rows_to_columns(datapoints_per_stack, num_stacks)
 
-    print ("Recording time :", time)
-    np_flat_lists = np.array(flat_lists)
-    for i in range(len(np_flat_lists)):
-         np_flat_lists[i] = np.array(np_flat_lists[i])
-    averages = np.mean(np_flat_lists, axis=0)
-
-    # Store data:
-    if store:
-        store_data(path, data, values)
     # Plot data: 
-    # TODO: what is plotted here?
     if plot and joined=="stacked":    
-        plot_data(values, time, path)
-        print("Integral:", (-1)*np.trapez(values))
+        plot_data(datapoints_per_stack, time, path)
+        print("Integral:", (-1)*np.trapez(datapoints_per_stack))
     # Print all stacks in a row (stack-1, stack-2, ..., stack-n)
-    elif plot and joined=="in_a_row":
+    elif plot and joined=="in_a_row":   
+        # Create joined lists (all stacks in a row: stack-1..n), and average stack
+        joined_lists = join_lists(flat_lists)
         plot_data(joined_lists, time, path)
     # Plot first and last stack
     elif plot and joined=="first_last":
         plot_data(flat_lists[0], time, path, list2=flat_lists[-1])
-        for l in flat_lists:
-            min_val = min(l)
-            print("INTAGRAL: ", integrate.simps([x-min_val for x in l]))
+        for i in [0, -1]:
+            min_val = min(flat_lists[i])
+            print("INTAGRAL: ", integrate.simps([x-min_val for x in flat_lists[i]]))
     # Plot average, also mark and print peaks
     elif plot and joined=="average":
-        # mid = int( 0.5 * len(flat_lists))
-        # avrg = flat_lists[mid]
         avrg = [sum([x[i] for x in flat_lists])/len([x[i] for x in flat_lists]) for i in range(len(flat_lists[0]))]
         # Get MONOSYNAPTIC INPUT from 200ms, every 100ms, 20ms interval (first 10 peaks)
         max_peaks = get_peaks(avrg, start, step, interval, num_intervals=10, comp=np.greater_equal)
@@ -213,13 +174,13 @@ def run(path, plot, store, joined, start, step, interval):
         min_peaks, max_peaks = alternate_min_max(min_peaks, max_peaks)
         plt.ylim(-85, -55)
         # Alternative method to get DYSYNAPTIC INPUT (using all data-points):
-        #maxpeaks = get_peaks_in_range(flat_lists[mid], comp=np.greater_equal)
         df = peaks_to_dataframe(get_only_peaks(max_peaks), get_only_peaks(min_peaks))
         print(df)
         # Finally: plot data
         plot_data(avrg, time, path, min_peaks=min_peaks, max_peaks=max_peaks, df=df)
-        # Substract min value from each value, to get integral from baseline only )not dow to zero).
+        # Substract min value from each value, to get integral from baseline only (not down to zero).
         min_val = min(avrg)
         print("INTAGRAL: ", integrate.simps([x-min_val for x in avrg]))
+
 if __name__ == '__main__': 
     run()
