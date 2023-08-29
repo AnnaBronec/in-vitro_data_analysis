@@ -3,8 +3,6 @@ import os
 import os.path
 import math
 import numpy as np
-from pprint import pformat
-import statistics
 import click
 import pandas as pd
 from matplotlib import pyplot as plt
@@ -12,7 +10,6 @@ from igor.binarywave import load as loadibw
 from scipy.signal import argrelextrema
 from scipy import integrate
 DT = 5*10 ** -5
-
 
 def get_only_peaks(peaks):
     """ 
@@ -105,7 +102,7 @@ def store_data(path, data, values):
     path = path.replace('ibw', '')
     path = path.replace('input', 'output')
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    lines = pformat(data).splitlines()            
+    lines = format(data).splitlines()            
     with open(f'{path}.txt', 'w') as writer: 
         writer.writelines([line + "\n" for line in lines])
         # json.dump(data, writer, indent=4)
@@ -202,6 +199,9 @@ def run(path, plot, store, joined, start, step, interval):
     # Plot first and last stack
     elif plot and joined=="first_last":
         plot_data(flat_lists[0], time, path, list2=flat_lists[-1])
+        for l in flat_lists:
+            min_val = min(l)
+            print("INTAGRAL: ", integrate.simps([x-min_val for x in l]))
     # Plot average, also mark and print peaks
     elif plot and joined=="average":
         # mid = int( 0.5 * len(flat_lists))
@@ -211,6 +211,7 @@ def run(path, plot, store, joined, start, step, interval):
         max_peaks = get_peaks(avrg, start, step, interval, num_intervals=10, comp=np.greater_equal)
         min_peaks = get_peaks(avrg, start, step, interval, num_intervals=10, comp=np.less_equal)
         min_peaks, max_peaks = alternate_min_max(min_peaks, max_peaks)
+        plt.ylim(-85, -55)
         # Alternative method to get DYSYNAPTIC INPUT (using all data-points):
         #maxpeaks = get_peaks_in_range(flat_lists[mid], comp=np.greater_equal)
         df = peaks_to_dataframe(get_only_peaks(max_peaks), get_only_peaks(min_peaks))
