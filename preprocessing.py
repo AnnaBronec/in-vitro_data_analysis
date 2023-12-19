@@ -15,7 +15,7 @@ def extract_data(path: str, store: bool) -> List[List[int]]:
     return datapoints_per_stack
 
 def convert_rows_to_columns(
-    datapoints_per_stack: List[List[int]], num_stacks: int
+    datapoints_per_stack: List[List[float]], num_stacks: int
 ) -> List[List[int]]:
     flat_lists = [ list() for x in range(num_stacks)] #flat_lists = leere Liste für jeden stack
     for nth_datapoints in datapoints_per_stack:
@@ -23,7 +23,7 @@ def convert_rows_to_columns(
             flat_lists[stack].append(nth_datapoints[stack])
     return flat_lists
 
-def join_lists(flat_lists: List[List[int]]) -> List[List[int]]:
+def join_lists(flat_lists: List[List[float]]) -> List[List[float]]:
     joined_lists = [] 
     for i in range(len(flat_lists)):
         joined_lists += flat_lists[i]

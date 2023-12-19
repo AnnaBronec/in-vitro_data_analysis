@@ -38,7 +38,7 @@ def plot_integral(
     plt.ylabel('Y-axis')
     # plt.ylim(-65,-50) TODO (fux): removed since view was better without
     plt.legend()
-    plt.show()
+    # plt.show()
 
 def __cal_area(xs: List[int], ys: List[float], base_line: float):
     return simps(ys, xs, int(base_line))

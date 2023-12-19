@@ -1,9 +1,28 @@
 import math
+from typing import List
+from dataclasses import dataclass
 import pandas as pd
 import numpy as np
 from scipy.signal import argrelextrema
 
 DT = 5*10 ** -5
+
+def avrg(flat_lists: List[List[float]]) -> List[float]:
+    return [sum([x[i] for x in flat_lists])/len([x[i] for x in flat_lists]) for i in range(len(flat_lists[0]))]
+
+@dataclass 
+class Peaks: 
+    start: float
+    step: float
+    interval: float
+    num_intervals: int
+
+@dataclass 
+class Selection: 
+    start: int 
+    end: int 
+    calc_avrg: bool 
+
 
 def get_only_peaks(peaks):
     """ 
@@ -63,11 +82,11 @@ def get_peaks_in_range(xs, comp, epsilon=25):
            peaks.append(math.nan)
     return peaks
 
-def get_peaks(xs, start, step, interval, num_intervals, comp):
+def get_peaks(xs, peaks_info: Peaks, comp):
     # convert seconds to index
-    start = int(start*len(xs)/2)
-    step = int(step*len(xs)/2)
-    interval = int(interval*len(xs)/2)
+    start = int(peaks_info.start*len(xs)/2)
+    step = int(peaks_info.step*len(xs)/2)
+    interval = int(peaks_info.interval*len(xs)/2)
     # fill values up to first data-point with nans
     peaks = [math.nan for _ in range(start-(step-interval))]
     counter = 0
@@ -79,7 +98,7 @@ def get_peaks(xs, start, step, interval, num_intervals, comp):
             peaks = peaks + get_peaks_in_range(xs[i:(i+interval)], comp, 1)
         # stop after first 'num_intervals' datapoints
         counter += 1
-        if counter == num_intervals:
+        if counter == peaks_info.num_intervals:
             break
     peaks = peaks + [math.nan for _ in range(len(peaks), len(xs))]
     print(f"get_peaks with: {start}, {step},{interval},found {len(get_only_peaks(peaks))} peaks.")

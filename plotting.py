@@ -2,8 +2,9 @@ import numpy as np
 from matplotlib import pyplot as plt
 
 def plot_data(
-    path, values, total_time, min_peaks=None, max_peaks=None, df=None, list2=None
+    path, values, total_time, min_peaks=None, max_peaks=None, df=None
 ):  
+    print("Plotting with total time: ", total_time)
     listxachs=np.linspace(0, total_time, len(values)) 
     # Plot peaks, if set
     if min_peaks is not None:
@@ -11,9 +12,6 @@ def plot_data(
     if max_peaks is not None:
         plt.scatter(listxachs, max_peaks, c='b')
     plt.plot(listxachs, values, linewidth=0.3, color="red")
-    # Plot second list if set
-    if list2 is not None:
-        plt.plot(listxachs, list2, linewidth=0.3, color="red", label="last")
     plt.xlabel("Time [minutes]",
             family = 'serif',
             color='black',
@@ -34,7 +32,9 @@ def plot_data(
     if df is not None:
         path = path.replace('svg','csv')
         df.to_csv(path)
-    plt.show()
+    plt.cla()
+    plt.clf()
+    # plt.show()
     
 def scalebar(abf=None, hideTicks=True, hideFrame=True, fontSize=8, scaleXsize=None, scaleYsize=None, scaleXunits=2, scaleYunits=5, lineWidth=2): 
      """ 
