@@ -1,16 +1,19 @@
 import numpy as np
+import matplotlib
 from matplotlib import pyplot as plt
+matplotlib.use("svg")
 
 def plot_data(
     path, values, total_time, min_peaks=None, max_peaks=None, df=None
 ):  
-    print("Plotting with total time: ", total_time)
+    print("Plotting now: ", len(values), total_time)
     listxachs=np.linspace(0, total_time, len(values)) 
     # Plot peaks, if set
     if min_peaks is not None:
         plt.scatter(listxachs, min_peaks, c='b')
     if max_peaks is not None:
         plt.scatter(listxachs, max_peaks, c='b')
+    print("building plot")
     plt.plot(listxachs, values, linewidth=0.3, color="red")
     plt.xlabel("Time [minutes]",
             family = 'serif',
@@ -25,15 +28,20 @@ def plot_data(
             size = 10,
             labelpad = 5)
     # Store figure
+    print("storing file")
     path = path.replace('input','output')  # input, ouput = foldernames
-    path = path.replace('ibw','svg')
-    plt.savefig(f'{path}',format='svg')    # only if you want to safe it
+    path = path.replace('ibw','png')
+    plt.savefig(path, format='png', dpi=90)  # Adjust dpi for lower resolution
+    path = path.replace('png','svg')
+    plt.savefig(path, format='svg')    # only if you want to safe it
     # Store df (peaks)
     if df is not None:
         path = path.replace('svg','csv')
         df.to_csv(path)
+    print("clearing up")
     plt.cla()
     plt.clf()
+    print("done")
     # plt.show()
     
 def scalebar(abf=None, hideTicks=True, hideFrame=True, fontSize=8, scaleXsize=None, scaleYsize=None, scaleXunits=2, scaleYunits=5, lineWidth=2): 

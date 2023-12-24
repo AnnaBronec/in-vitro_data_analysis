@@ -1,4 +1,4 @@
-from typing import Dict, List
+from typing import Dict, List, Tuple
 import numpy as np
 import click
 from matplotlib import pyplot as plt
@@ -19,40 +19,36 @@ from extractor.integral import get_integral
 
 VERSION = "0-0-2"
 
-def plot(
-    path: str, flat_lists: List[List[float]], time: float, selection: Selection
-) -> List[List[float]]:
-    ranged_flat_lists = [flat_lists[i] for i in range(selection.start, selection.end)]
-    rtn_data = ranged_flat_lists if not selection.calc_avrg else [ avrg(ranged_flat_lists) ]
-    print("got ranged lists: ", type(ranged_flat_lists), len(ranged_flat_lists), avrg)
-    print("got ranged lists: ", type(rtn_data), len(rtn_data))
-    if avrg: 
-        data, time = average(ranged_flat_lists, time)
-    else: 
-        data, time = in_a_row(ranged_flat_lists, time)
-    plot_data(path, data, time)
-    print("got ranged lists: ", type(rtn_data), len(rtn_data))
-    return rtn_data
+def get_range(
+    sweeps: List[List[float]], selection: Selection
+) -> Tuple[List[List[float]], float]:
+    """
+    Gets dataset matching the user defined selection and the appropriate time
+    for the selection. 
+    Function will always return a list of 1-22 sweeps. If average was selected,
+    it will always be a list with one sweep representing the avaerage of the
+    selection.
+    The time is always the default time multiplied by the number of sweeps.
+    """
+    # Calculate time based on full data-set
+    time = len(sweeps[0]) * DT
+    # Reduce dataset to range requested by user
+    ranged_sweeps = [sweeps[i] for i in range(selection.start, selection.end)]
+    print("all: ", len(sweeps), f"{selection.start}-{selection.end}", len(ranged_sweeps))
+    # If avrg selected by user calculate the averange from the selected range
+    ranged_sweeps = [ avrg(ranged_sweeps) ] if selection.calc_avrg else ranged_sweeps
+    # calculate time from the number of sweeps obtained.
+    return ranged_sweeps, time # *len(ranged_sweeps)
 
-      
-def in_a_row(flat_lists: List[List[float]], time: float):
-    # Create joined lists (all stacks in a row: stack-1..n), and average stacks
-    return join_lists(flat_lists), time*len(flat_lists)
-
-# elif plot and joined=="average":
-def average(flat_lists: List[List[float]], time: float):   
-    return avrg(flat_lists), time
-
-def peaks(flat_lists: List[List[int]], peaks_info: Peaks) -> Dict[int, Dict]:
-    print("flat_lists: ", type(flat_lists), len(flat_lists))
+def peaks(sweeps: List[List[int]], peaks_info: Peaks) -> Dict[int, Dict]:
+    print("sweeps: ", type(sweeps), len(sweeps))
     peaks = {} 
-    for index, sweep in enumerate(flat_lists):
+    for index, sweep in enumerate(sweeps):
         peaks[index] = {
             "max": get_peaks(sweep, peaks_info, comp=np.greater_equal),
             "min": get_peaks(sweep, peaks_info, comp=np.less_equal)
         }
     return peaks
-
 
 # Calculate and plot integral
 # def average(
