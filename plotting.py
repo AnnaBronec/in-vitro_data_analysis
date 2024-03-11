@@ -38,10 +38,8 @@ def plot_data(
     if df is not None:
         path = path.replace('svg','csv')
         df.to_csv(path)
-    print("clearing up")
     plt.cla()
     plt.clf()
-    print("done")
     # plt.show()
     
 def scalebar(abf=None, hideTicks=True, hideFrame=True, fontSize=8, scaleXsize=None, scaleYsize=None, scaleXunits=2, scaleYunits=5, lineWidth=2): 

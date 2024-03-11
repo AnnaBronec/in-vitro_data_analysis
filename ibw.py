@@ -2,20 +2,16 @@ from typing import Dict, List, Tuple
 import numpy as np
 import click
 from matplotlib import pyplot as plt
-from scipy import integrate
-from extractor.preprocessing import extract_data, convert_rows_to_columns, join_lists
+from extractor.preprocessing import extract_data, convert_rows_to_columns
 from extractor.functions import (
     Peaks,
     Selection,
     avrg,
-    get_only_peaks, 
-    alternate_min_max, 
-    get_peaks, 
-    peaks_to_dataframe, 
+    calc_time_from_sweeps,
+    get_peaks,
+    peaks_as_table, 
     DT,
 )
-from extractor.plotting import plot_data
-from extractor.integral import get_integral 
 
 VERSION = "0-0-2"
 
@@ -31,24 +27,24 @@ def get_range(
     The time is always the default time multiplied by the number of sweeps.
     """
     # Calculate time based on full data-set
-    time = len(sweeps[0]) * DT
     # Reduce dataset to range requested by user
     ranged_sweeps = [sweeps[i] for i in range(selection.start, selection.end)]
     print("all: ", len(sweeps), f"{selection.start}-{selection.end}", len(ranged_sweeps))
     # If avrg selected by user calculate the averange from the selected range
     ranged_sweeps = [ avrg(ranged_sweeps) ] if selection.calc_avrg else ranged_sweeps
     # calculate time from the number of sweeps obtained.
-    return ranged_sweeps, time # *len(ranged_sweeps)
-
-def peaks(sweeps: List[List[int]], peaks_info: Peaks) -> Dict[int, Dict]:
+    return ranged_sweeps, calc_time_from_sweeps(sweeps)
+def peaks(
+    sweeps: List[List[float]], peaks_info: Peaks
+) -> Tuple[Dict[int, Dict], float]:
     print("sweeps: ", type(sweeps), len(sweeps))
     peaks = {} 
     for index, sweep in enumerate(sweeps):
-        peaks[index] = {
-            "max": get_peaks(sweep, peaks_info, comp=np.greater_equal),
-            "min": get_peaks(sweep, peaks_info, comp=np.less_equal)
-        }
-    return peaks
+        min_peaks = get_peaks(sweep, peaks_info, comp=np.greater_equal)
+        max_peaks = get_peaks(sweep, peaks_info, comp=np.less_equal)
+        table = peaks_as_table(max_peaks, min_peaks)
+        peaks[str(index)] = {"max": min_peaks, "min": max_peaks, "df": table}
+    return peaks, calc_time_from_sweeps(sweeps)
 
 # Calculate and plot integral
 # def average(

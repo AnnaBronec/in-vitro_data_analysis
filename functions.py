@@ -1,14 +1,11 @@
 import math
-from typing import List
+from typing import List, Any
 from dataclasses import dataclass
 import pandas as pd
 import numpy as np
 from scipy.signal import argrelextrema
 
 DT = 5*10 ** -5
-
-def avrg(flat_lists: List[List[float]]) -> List[float]:
-    return [sum([x[i] for x in flat_lists])/len([x[i] for x in flat_lists]) for i in range(len(flat_lists[0]))]
 
 @dataclass 
 class Peaks: 
@@ -23,6 +20,11 @@ class Selection:
     end: int 
     calc_avrg: bool 
 
+def avrg(flat_lists: List[List[float]]) -> List[float]:
+    return [sum([x[i] for x in flat_lists])/len([x[i] for x in flat_lists]) for i in range(len(flat_lists[0]))]
+
+def calc_time_from_sweeps(sweeps: List[List[float]]) -> float: 
+    return len(sweeps[0]) * DT
 
 def get_only_peaks(peaks):
     """ 
@@ -48,8 +50,10 @@ def alternate_min_max(min_peaks, max_peaks):
             last_was_min = False
     return min_peaks, max_peaks
 
-def peaks_to_dataframe(max_peaks, min_peaks):
-    rows = []
+def peaks_as_table(max_peaks, min_peaks) -> List[List[Any]]:
+    max_peaks = get_only_peaks(max_peaks)
+    min_peaks = get_only_peaks(min_peaks)
+    rows = [["index", "time", "min", "index", "time", "max", "amp"]]
     # Create rows
     for i in range(len(max_peaks)):
         row = []
@@ -60,8 +64,7 @@ def peaks_to_dataframe(max_peaks, min_peaks):
         else: 
             row.append(math.nan)
         rows.append(row)
-    df = pd.DataFrame(np.array(rows), columns=["index", "time", "min", "index", "time", "max", "amp"])
-    return df
+    return rows
 
 # change epsilon to determmin number of peaks (for large data use ~25, for small use 1)
 def get_peaks_in_range(xs, comp, epsilon=25):
