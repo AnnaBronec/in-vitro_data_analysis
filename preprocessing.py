@@ -1,7 +1,7 @@
 import json
 import numpy as np
 import os
-from igor.binarywave import load as loadibw
+from igor2.binarywave import load as loadibw
 from typing import List
 
 def extract_data(path: str, store: bool) -> List[List[int]]:
