@@ -1,10 +1,11 @@
+from typing import Tuple
 import numpy as np
 import matplotlib
 from matplotlib import pyplot as plt
 matplotlib.use("svg")
 
 def plot_data(
-    path, values, total_time, min_peaks=None, max_peaks=None, df=None
+    path, values, total_time, ylim=None, min_peaks=None, max_peaks=None, df=None
 ):  
     print("Plotting now: ", len(values), total_time)
     listxachs=np.linspace(0, total_time, len(values)) 
@@ -27,6 +28,8 @@ def plot_data(
             weight = 'normal',
             size = 10,
             labelpad = 5)
+    if ylim:
+        plt.ylim(ylim)
     # Store figure
     print("storing file")
     path = path.replace('input','output')  # input, ouput = foldernames
