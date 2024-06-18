@@ -7,15 +7,20 @@ matplotlib.use("svg")
 def plot_data(
     path, values, total_time, ylim=None, min_peaks=None, max_peaks=None, df=None
 ):  
-    print("Plotting now: ", len(values), total_time)
-    listxachs=np.linspace(0, total_time, len(values)) 
+    num_values = len(values) if isinstance(values[0], float) else len(values[0])
+    print("Plotting now: ", num_values, total_time)
+    listxachs=np.linspace(0, total_time, num_values)
     # Plot peaks, if set
     if min_peaks is not None:
         plt.scatter(listxachs, min_peaks, c='b')
     if max_peaks is not None:
         plt.scatter(listxachs, max_peaks, c='b')
     print("building plot")
-    plt.plot(listxachs, values, linewidth=0.3, color="red")
+    if isinstance(values[0], float):
+        plt.plot(listxachs, values, linewidth=0.3, color="red")
+    else: 
+        for i, xs in enumerate(values): 
+            plt.plot(listxachs, xs, linewidth=0.3, color="red", label = 'id %s'%i)
     plt.xlabel("Time [minutes]",
             family = 'serif',
             color='black',

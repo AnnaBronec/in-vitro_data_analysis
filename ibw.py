@@ -34,6 +34,7 @@ def get_range(
     ranged_sweeps = [ avrg(ranged_sweeps) ] if selection.calc_avrg else ranged_sweeps
     # calculate time from the number of sweeps obtained.
     return ranged_sweeps, calc_time_from_sweeps(sweeps)
+
 def peaks(
     sweeps: List[List[float]], peaks_info: Peaks
 ) -> Tuple[Dict[int, Dict], float]:
