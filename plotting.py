@@ -36,19 +36,14 @@ def plot_data(
     if ylim:
         plt.ylim(ylim)
     # Store figure
-    print("storing file")
-    path = path.replace('input','output')  # input, ouput = foldernames
-    path = path.replace('ibw','png')
-    plt.savefig(path, format='png', dpi=90)  # Adjust dpi for lower resolution
-    path = path.replace('png','svg')
-    plt.savefig(path, format='svg')    # only if you want to safe it
+    plt.savefig(f"{path}.png", format='png', dpi=90)  # Adjust dpi for lower resolution
+    plt.savefig(f"{path}.svg", format='svg')    # only if you want to safe it
     # Store df (peaks)
     if df is not None:
-        path = path.replace('svg','csv')
-        df.to_csv(path)
+        df.to_csv(f"{path}.csv")
     plt.cla()
     plt.clf()
-    # plt.show()
+    plt.show()
     
 def scalebar(abf=None, hideTicks=True, hideFrame=True, fontSize=8, scaleXsize=None, scaleYsize=None, scaleXunits=2, scaleYunits=5, lineWidth=2): 
      """ 
