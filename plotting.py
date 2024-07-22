@@ -1,6 +1,7 @@
-from typing import Tuple
+from typing import List, Tuple
 import numpy as np
 import matplotlib
+from matplotlib import colors as mcolors
 from matplotlib import pyplot as plt
 matplotlib.use("svg")
 
@@ -19,8 +20,9 @@ def plot_data(
     if isinstance(values[0], float):
         plt.plot(listxachs, values, linewidth=0.3, color="red")
     else: 
+        color_names = _color_names(len(values))
         for i, xs in enumerate(values): 
-            plt.plot(listxachs, xs, linewidth=0.3, color="red", label = 'id %s'%i)
+            plt.plot(listxachs, xs, linewidth=0.3, color=color_names[i], label = 'id %s'%i)
     plt.xlabel("Time [minutes]",
             family = 'serif',
             color='black',
@@ -41,10 +43,25 @@ def plot_data(
     # Store df (peaks)
     if df is not None:
         df.to_csv(f"{path}.csv")
+    # plt.show()
     plt.cla()
     plt.clf()
-    plt.show()
-    
+
+def _color_names(num_plots: int) -> List[str]: 
+    def sorted_colors() -> List[str]: 
+        return sorted(
+            mcolors.CSS4_COLORS, 
+            key=lambda c: tuple(mcolors.rgb_to_hsv(mcolors.to_rgb(c)))
+        )
+    if num_plots <= 6:
+        return list(mcolors.BASE_COLORS)
+    elif num_plots <= 10: 
+        return list(mcolors.TABLEAU_COLORS)
+    elif num_plots <= 25: 
+        return sorted_colors()[4::5] 
+    else:
+        return sorted_colors()[2::3] 
+   
 def scalebar(abf=None, hideTicks=True, hideFrame=True, fontSize=8, scaleXsize=None, scaleYsize=None, scaleXunits=2, scaleYunits=5, lineWidth=2): 
      """ 
      Add an L-shaped scalebar to the current figure. 
