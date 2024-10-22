@@ -20,6 +20,13 @@ class Selection:
     end: int 
     calc_avrg: bool 
 
+@dataclass 
+class Scalebar: 
+    show: bool 
+    hide_ticks: bool 
+    ysize: int|None
+    xsize: int|None
+
 def avrg(flat_lists: List[List[float]]) -> List[float]:
     return [sum([x[i] for x in flat_lists])/len([x[i] for x in flat_lists]) for i in range(len(flat_lists[0]))]
 
