@@ -46,7 +46,7 @@ def plot_data(
             labelpad = 5)
     if ylim:
         plt.ylim(ylim)
-    if scalebar is not None or scalebar.show:
+    if scalebar is not None and scalebar.show:
         apply_scalebar(scalebar.hide_ticks, scalebar.xsize, scalebar.ysize)
     # Store figure
     plt.savefig(f"{path}.png", format='png', dpi=90)  # Adjust dpi for lower resolution
